@@ -48,6 +48,22 @@ function isNotFoundError(error: unknown): boolean {
     return false;
 }
 
+export function isRetryableGeminiError(error: unknown): boolean {
+    if (error instanceof Error) {
+        const msg = error.message.toLowerCase();
+        return (
+            msg.includes('503') ||
+            msg.includes('429') ||
+            msg.includes('rate limit') ||
+            msg.includes('high demand') ||
+            msg.includes('overloaded') ||
+            msg.includes('internal error') ||
+            msg.includes('"code":500')
+        );
+    }
+    return false;
+}
+
 function isGroqRetryableError(error: unknown): boolean {
     if (error instanceof Error) {
         const msg = error.message.toLowerCase();
@@ -79,6 +95,10 @@ export async function generateGeminiContent(
             lastError = error;
             if (isNotFoundError(error)) {
                 console.warn(`[GEMINI] Model not found, trying next: ${model}`);
+                continue;
+            }
+            if (isRetryableGeminiError(error)) {
+                console.warn(`[GEMINI] Transient provider error, trying next: ${model}`);
                 continue;
             }
             console.error(`[GEMINI] Model error: ${model}`, error);

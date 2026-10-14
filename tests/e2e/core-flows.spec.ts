@@ -85,7 +85,9 @@ async function uploadDocument(page: Page, filePath: string) {
   await fileInput.setInputFiles(filePath);
   await expect(page.locator('button:has-text("Upload evidence")')).toBeEnabled({ timeout: 5000 });
   await page.click('button:has-text("Upload evidence")');
-  await expect(page.locator('text=Evidence uploaded')).toBeVisible({ timeout: 120000 });
+  // Exact match: a substring locator ("Evidence uploaded") also matched the
+  // "No evidence uploaded" empty-state heading, passing before the upload finished.
+  await expect(page.getByText('Evidence uploaded. OCR processing will appear here when ready.', { exact: true })).toBeVisible({ timeout: 120000 });
   const fileName = filePath.split('/').pop() || filePath.split('\\').pop();
   const docRow = page.locator('p.truncate', { hasText: fileName }).first();
   await expect(docRow).toBeVisible({ timeout: 30000 });

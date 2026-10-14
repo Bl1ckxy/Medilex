@@ -1,4 +1,4 @@
-import { generateGeminiContentWithModels, OCR_MODELS } from './providers';
+import { generateGeminiContentWithModels, isRetryableGeminiError, OCR_MODELS } from './providers';
 
 const OCR_SYSTEM_PROMPT = [
     'You are a forensic document transcription engine for medical and legal records.',
@@ -26,6 +26,10 @@ async function ocrWithModelFallback(mimeType: string, data: Buffer, prompt: stri
             lastError = error;
             if (error instanceof Error && (error.message.includes('404') || error.message.toLowerCase().includes('not found'))) {
                 console.warn(`[OCR] Model not found, trying next: ${model}`);
+                continue;
+            }
+            if (isRetryableGeminiError(error)) {
+                console.warn(`[OCR] Transient provider error, trying next: ${model}`);
                 continue;
             }
             console.error(`[OCR] Model error: ${model}`, error);

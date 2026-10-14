@@ -1,4 +1,4 @@
-import { gemini, EMBEDDING_MODELS, EMBEDDING_DIMENSIONS, cleanGeminiModelName } from './providers';
+import { gemini, EMBEDDING_MODELS, EMBEDDING_DIMENSIONS, cleanGeminiModelName, isRetryableGeminiError } from './providers';
 
 export async function embedText(text: string, opts?: { taskType?: 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY' }): Promise<number[]> {
     let lastError: unknown;
@@ -28,6 +28,10 @@ export async function embedText(text: string, opts?: { taskType?: 'RETRIEVAL_DOC
             lastError = error;
             if (error instanceof Error && (error.message.includes('404') || error.message.toLowerCase().includes('not found'))) {
                 console.warn(`[EMBEDDING] Model not found, trying next: ${model}`);
+                continue;
+            }
+            if (isRetryableGeminiError(error)) {
+                console.warn(`[EMBEDDING] Transient provider error, trying next: ${model}`);
                 continue;
             }
             console.error(`[EMBEDDING] Model error: ${model}`, error);

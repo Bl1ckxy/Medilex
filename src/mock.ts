@@ -1,32 +1,31 @@
 import { mockCases, mockDocuments, mockAnalysis, mockProfiles, mockFirm } from '@/mockData';
-import type { Case, Document } from '@/types/database';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-export function getMockCases(): Case[] {
+export function getMockCases() {
   if (!isProduction && (!globalThis as any).supabase) {
-    return mockCases.map((c) => c as Case);
+    return mockCases;
   }
   return [];
 }
 
-export function getMockDocuments(): Document[] {
+export function getMockDocuments() {
   if (!isProduction && (!globalThis as any).supabase) {
-    return mockDocuments.map((d) => d as Document);
+    return mockDocuments;
   }
   return [];
 }
 
-export function getMockCase(caseId: string): Case | undefined {
+export function getMockCase(caseId: string) {
   if (!isProduction && (!globalThis as any).supabase) {
-    return mockCases.find((c) => c.id === caseId) as Case | undefined;
+    return mockCases.find((c) => c.id === caseId);
   }
   return undefined;
 }
 
-export function getMockDocumentsForCase(caseId: string): Document[] {
+export function getMockDocumentsForCase(caseId: string) {
   if (!isProduction && (!globalThis as any).supabase) {
-    return mockDocuments.filter((d) => d.case_id === caseId).map((d) => d as Document);
+    return mockDocuments.filter((d) => d.case_id === caseId);
   }
   return [];
 }

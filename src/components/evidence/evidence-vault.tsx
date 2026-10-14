@@ -6,7 +6,7 @@ import { CheckCircle2, Download, FileArchive, FileText, Loader2, Plus, RefreshCw
 import { DOCUMENT_CATEGORIES, DOCUMENT_CATEGORY_LABELS, type DocumentCategory } from '@/types/legal';
 import type { Document } from '@/types/database';
 import { EmptyState } from '@/components/shared/empty-state';
-import { Panel, Button } from '@/components/shared/ui';
+import { Panel, Button, Skeleton } from '@/components/shared/ui';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { formatDate } from '@/lib/utils';
 
@@ -142,6 +142,23 @@ export function EvidenceVault({
                     <label className="block text-sm font-medium text-navy">Category<select value={category} onChange={(event) => setCategory(event.target.value as DocumentCategory)} className="mt-1.5 h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-700 outline-none focus:border-gold focus:ring-2 focus:ring-gold/20">{DOCUMENT_CATEGORIES.map((item) => <option key={item} value={item}>{DOCUMENT_CATEGORY_LABELS[item]}</option>)}</select></label>
                     <Button onClick={() => void upload()} disabled={!selectedFile} loading={busy} className="w-full lg:w-auto"><Plus className="h-4 w-4" />Upload evidence</Button>
                 </div>
+                {busy && (
+                    <div className="border-t border-slate-100 bg-slate-50/50 p-5 space-y-3">
+                        <div className="flex items-center gap-3">
+                            <Loader2 className="h-4 w-4 animate-spin text-gold-600" />
+                            <p className="text-sm font-medium text-navy">
+                                Ingesting document & performing OCR…
+                            </p>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                            Large PDFs can take up to 60 seconds to process. Please wait while text and embeddings are generated.
+                        </p>
+                        <div className="space-y-2">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                        </div>
+                    </div>
+                )}
                 {error && <p className="border-t border-crimson-100 bg-crimson-50 px-5 py-3 text-sm text-crimson">{error}</p>}
                 {message && <p className="flex items-center gap-2 border-t border-emerald-100 bg-emerald-50 px-5 py-3 text-sm text-emerald-700"><CheckCircle2 className="h-4 w-4" />{message}</p>}
             </Panel>

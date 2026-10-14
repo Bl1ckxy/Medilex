@@ -14,7 +14,11 @@
         "db:generate": "drizzle-kit generate",
         "db:push": "drizzle-kit push",
         "db:studio": "drizzle-kit studio",
-        "prepare": "husky"
+        "seed:legal": "node scripts/seed-legal-corpus.mjs",
+        "seed:legal:prod": "node scripts/seed-legal-corpus.mjs --env production",
+        "prepare": "husky",
+        "test:unit": "node --test tests/unit/*.test.mjs",
+        "eval:legal": "node scripts/eval-legal.mjs"
     },
     "dependencies": {
         "@fontsource/inter": "^5.0.18",

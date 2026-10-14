@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, BriefcaseBusiness, ChevronDown, FileText, Gavel, LayoutDashboard, Menu, Search, Settings, ShieldCheck, X } from 'lucide-react';
+import { Bell, BriefcaseBusiness, ChevronDown, FileText, Gavel, LayoutDashboard, Menu, Scale, Search, Settings, ShieldCheck, X } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +13,7 @@ const navigation = [
     { href: '/dashboard/cases', label: 'Cases', icon: BriefcaseBusiness },
     { href: '/dashboard/evidence', label: 'Evidence vault', icon: FileText },
     { href: '/dashboard/odr', label: 'ODR & filings', icon: Gavel },
+    { href: '/dashboard/legal', label: 'Legal research', icon: Scale },
 ];
 
 export function AppShell({

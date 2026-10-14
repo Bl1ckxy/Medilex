@@ -1,17 +1,26 @@
-import { gemini, EMBEDDING_MODELS, cleanGeminiModelName } from './providers';
+import { gemini, EMBEDDING_MODELS, EMBEDDING_DIMENSIONS, cleanGeminiModelName } from './providers';
 
-export async function embedText(text: string): Promise<number[]> {
+export async function embedText(text: string, opts?: { taskType?: 'RETRIEVAL_DOCUMENT' | 'RETRIEVAL_QUERY' }): Promise<number[]> {
     let lastError: unknown;
     for (const model of EMBEDDING_MODELS) {
         try {
             const response = await gemini.models.embedContent({
                 model: cleanGeminiModelName(model),
                 contents: text,
+                config: { outputDimensionality: EMBEDDING_DIMENSIONS, taskType: opts?.taskType || 'RETRIEVAL_DOCUMENT' },
             });
             const values = response.embeddings?.[0]?.values;
             if (!values || values.length === 0) {
                 console.error(`Embedding model ${model} returned empty values`);
                 throw new Error('Gemini returned an invalid embedding (empty values)');
+            }
+            if (values.length !== EMBEDDING_DIMENSIONS) {
+                console.error(
+                    `Embedding model ${model} returned ${values.length} dims, expected ${EMBEDDING_DIMENSIONS}`
+                );
+                throw new Error(
+                    `Gemini returned an embedding of unexpected dimensionality: ${values.length}`
+                );
             }
             console.log(`[EMBEDDING] Model succeeded: ${model} (${values.length} dims)`);
             return values;
@@ -29,5 +38,5 @@ export async function embedText(text: string): Promise<number[]> {
 }
 
 export async function embedTexts(texts: string[]): Promise<number[][]> {
-    return Promise.all(texts.map(embedText));
+    return Promise.all(texts.map((t) => embedText(t, { taskType: 'RETRIEVAL_DOCUMENT' })));
 }

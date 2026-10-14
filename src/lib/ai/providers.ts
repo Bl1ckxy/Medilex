@@ -23,8 +23,11 @@ export const OCR_MODELS = [
 ] as const;
 
 export const EMBEDDING_MODELS = [
-    'text-embedding-004',
+    'gemini-embedding-001',
+    'gemini-embedding-2',
 ] as const;
+
+export const EMBEDDING_DIMENSIONS = 768;
 
 export const GROQ_MODELS = [
     env.GROQ_MODEL,

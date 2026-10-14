@@ -6,6 +6,8 @@ import { sha256, constantTimeEqual } from '@/lib/ai/hash';
 import { ingestDocument, type IngestionResult } from '@/lib/ai/ingestion';
 import { getMockDocumentsForCase } from '@/mock';
 
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
     const { supabase, authUser, profile } = await getProfile();
     if (!authUser || !profile) return apiError(401, 'UNAUTHORIZED', 'Authentication required');
@@ -115,6 +117,21 @@ export async function POST(request: Request) {
     } catch (cause) {
         // This should only happen for hash mismatch or document not found
         const message = cause instanceof Error ? cause.message : 'Document ingestion failed';
+        const isTimeout = cause instanceof Error && (
+            cause.name === 'AbortError' ||
+            cause.name === 'TimeoutError' ||
+            cause.message.toLowerCase().includes('timeout') ||
+            cause.message.toLowerCase().includes('timed out') ||
+            cause.message.toLowerCase().includes('aborted')
+        );
+        if (isTimeout) {
+            return apiError(
+                504,
+                'OCR_FAILED',
+                'Document processing timed out. The file was uploaded successfully — retry processing from the Evidence tab.',
+                { retryable: true },
+            );
+        }
         console.error('[UPLOAD] Ingestion threw unexpectedly:', message);
         ingestion = {
             documentId: data.id,

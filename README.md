@@ -291,4 +291,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 <p align="center">
   Made with ‚ù§Ô∏è for Indian legal professionals by HARSH ROKADE (https://github.com/Bl1ckxy)
-</p>
+</p>`r`n## ? Legal Corpus & Grounded QA`r`n- Curated 62-authority Indian medical-negligence corpus (`data/legal/`), embedded with `gemini-embedding-001` (768d), retrieved via HNSW (`supabase/legal_corpus.sql`), verified by deterministic citation gate (`src/lib/ai/citation-checker.ts`).`r`n- `/dashboard/legal` ó ask or search the corpus; answers are gated ó unverified citations are stripped before persistence. See `docs/legal-corpus-card.md`, `docs/legal-qa-eval.md`, `docs/PANEL-ONEPAGER.md`.`r`n- `npm run test:unit` covers retrieval + gate; `npm run eval:legal` (script `scripts/eval-legal.mjs`) runs 18 questions with 3 negative controls against live APIs.`r`n

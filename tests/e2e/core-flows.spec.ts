@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 const TEST_USER = {
   email: 'test-e2e@example.com',
@@ -24,7 +24,7 @@ const CASE_DATA = {
   treatingDoctorRegistration: 'MMC-12345',
 };
 
-async function login(page) {
+async function login(page: Page) {
   await page.goto('/auth/login');
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('input[type="email"]', { timeout: 30000 });
@@ -34,7 +34,7 @@ async function login(page) {
   await expect(page).toHaveURL('/dashboard', { timeout: 30000 });
 }
 
-async function createCase(page, data = CASE_DATA) {
+async function createCase(page: Page, data = CASE_DATA) {
   // Use API to create case - more reliable than form submit
   const response = await page.request.post('/api/cases', {
     data: {
@@ -73,13 +73,13 @@ async function createCase(page, data = CASE_DATA) {
   return caseId;
 }
 
-async function openCase(page, caseId) {
+async function openCase(page: Page, caseId: string) {
   await page.goto(`/dashboard/cases/${caseId}`);
   await expect(page).toHaveURL(/\/dashboard\/cases\/[a-f0-9-]+/);
   return caseId;
 }
 
-async function uploadDocument(page, filePath, category) {
+async function uploadDocument(page: Page, filePath: string) {
   await page.click('button:has-text("Evidence")');
   const fileInput = page.locator('#evidence-file');
   await fileInput.setInputFiles(filePath);
@@ -128,7 +128,7 @@ test.describe('Medilex E2E Tests', () => {
     await openCase(page, caseId);
 
     const testPdf = 'tests/fixtures/test-document.pdf';
-    await uploadDocument(page, testPdf, 'Discharge summary');
+    await uploadDocument(page, testPdf);
 
     const docRow = page.locator('p.truncate', { hasText: 'test-document.pdf' }).locator('../..');
     const statusBadge = docRow.locator('span.inline-flex', { hasText: /completed/i });

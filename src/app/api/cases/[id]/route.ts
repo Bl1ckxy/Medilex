@@ -37,7 +37,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
             createdAt: mockData.createdAt,
             firmId: mockData.firmId,
             createdBy: mockData.createdBy,
-            limitationDeadline: mockData.limitationDeadline,
+            limitationDeadline: mockData.limitation_deadline,
             aiStrengthScore: mockData.aiStrengthScore,
             aiAnalysisCompleted: mockData.aiAnalysisCompleted,
             documents: [],

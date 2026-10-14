@@ -27,6 +27,7 @@ export const StrengthResultSchema = z.object({
     missingEvidence: z.array(z.string()),
     nextSteps: z.array(z.string()),
     authorities: z.array(z.string()),
+    deviationReason: z.string().max(1500).optional(),
     confidence: z.number().min(0).max(1),
 });
 export type StrengthResult = z.infer<typeof StrengthResultSchema>;

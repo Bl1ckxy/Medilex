@@ -57,7 +57,7 @@ export function DashboardOverview({ cases, userName }: { cases: DashboardCase[];
                 <StatCard label="Limitation watch" value={String(deadlines)} detail="Matters with a deadline" icon={Clock3} tone="crimson" />
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="grid grid-cols-1 gap-6 [&>*]:min-w-0 xl:grid-cols-[minmax(0,1fr)_340px]">
                 <Panel title="Recent matters" description="The latest activity across your firm" action={<Link href="/dashboard/cases" className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-gold-600 hover:text-gold-500 hover:underline">View all <ArrowRight className="h-3.5 w-3.5" /></Link>}>
                     {cases.length === 0 ? (
                         <EmptyState title="No matters yet" description="Create your first matter to start organising patient records and legal analysis." action={<Link href="/dashboard/cases/new" className="inline-flex h-9 items-center gap-2 rounded-md bg-navy px-3 text-xs font-semibold text-white"><Plus className="h-3.5 w-3.5" />Open a case</Link>} />

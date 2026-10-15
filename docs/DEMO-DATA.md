@@ -119,7 +119,9 @@ Service-role writes by design (no INSERT policy on `legal_chunks`).
 ## Housekeeping notes
 
 - `admin-debug-1791986507919@example.com` is a leftover debug account; delete it in
-  the Supabase dashboard if unwanted — there is intentionally **no delete UI**
-  (chain of custody: deletion is disabled in the app and denied by RLS).
+  the Supabase dashboard if unwanted. The admin panel deliberately has **no delete
+  controls** for users or cases (RLS has no DELETE policy on `users` / `cases`).
+  Document deletion still exists in the Evidence vault for users with case access —
+  pre-existing, unchanged by the admin work.
 - Do not edit eval questions or thresholds (`docs/legal-qa-eval.md`); eval results go to
   `docs/eval-results.md` only from a clean full run.

@@ -43,13 +43,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL(`/auth/login?returnTo=${encodeURIComponent(pathname)}`, request.url));
   }
 
-  if (pathname.startsWith('/auth/') && !pathname.startsWith('/auth/callback') && user) {
+  if (pathname.startsWith('/auth/') && !pathname.startsWith('/auth/callback') && user && request.nextUrl.searchParams.get('error') !== 'account_suspended') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Suspended accounts lose dashboard access immediately (session cleared);
-  // admin paths additionally require the firm_admin role.
-  if (pathname.startsWith('/dashboard') && user) {
+  // Suspended accounts lose access immediately: API calls get 403, dashboard
+  // navigation clears the session and lands on the login banner. Admin paths
+  // additionally require the firm_admin role.
+  if ((pathname.startsWith('/dashboard') || pathname.startsWith('/api/')) && user) {
     const { data: profile } = await supabase
       .from('users')
       .select('role, is_active')
@@ -57,27 +58,35 @@ export async function middleware(request: NextRequest) {
       .maybeSingle<{ role: string; is_active: boolean }>();
 
     if (profile && profile.is_active === false) {
-      await supabase.auth.signOut();
-      return NextResponse.redirect(new URL('/auth/login?error=account_suspended', request.url));
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { success: false, error: { code: 'ACCOUNT_SUSPENDED', message: 'Account suspended' } },
+          { status: 403 }
+        );
+      }
+      try {
+        await supabase.auth.signOut();
+      } catch (error) {
+        console.error('[MIDDLEWARE] Suspended-account signOut failed:', error instanceof Error ? error.message : error);
+      }
+      // signOut's setAll re-pointed `response` at the cookie-bearing response;
+      // carry its Set-Cookie clears over so the session dies in the browser too.
+      const redirect = NextResponse.redirect(new URL('/auth/login?error=account_suspended', request.url));
+      for (const cookie of response.cookies.getAll()) {
+        const { name, value, ...options } = cookie;
+        redirect.cookies.set(name, value, options);
+      }
+      return redirect;
     }
 
     if (isAdminPath(pathname) && (!profile || profile.role !== 'firm_admin')) {
+      if (pathname.startsWith('/api/')) {
+        return NextResponse.json(
+          { success: false, error: { code: 'FORBIDDEN', message: 'Admin access required' } },
+          { status: 403 }
+        );
+      }
       return NextResponse.redirect(new URL('/dashboard', request.url));
-    }
-  }
-
-  if (isAdminPath(pathname) && pathname.startsWith('/api/') && user) {
-    const { data: profile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('auth_id', user.id)
-      .maybeSingle<{ role: string }>();
-
-    if (!profile || profile.role !== 'firm_admin') {
-      return NextResponse.json(
-        { success: false, error: { code: 'FORBIDDEN', message: 'Admin access required' } },
-        { status: 403 }
-      );
     }
   }
 

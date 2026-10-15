@@ -9,8 +9,11 @@
 --                       rls_policies.sql: admins read + update firm users)
 --   * cases_select / cases_update include is_firm_admin()  -> admin case
 --                       read + metadata update (already granted)
---   * no DELETE policies on users / cases / documents -> deletion is denied
---                       by default (chain of custody enforced at the DB)
+--   * deletion: users and cases have NO delete policy (denied by default).
+--                       Documents are different: documents_delete exists for case
+--                       access and the evidence vault UI/API removes documents via
+--                       the service role (pre-existing, unchanged here). This admin
+--                       panel adds no delete capability at all.
 --
 -- This file adds the lockout guards from the admin plan, corrected to this
 -- schema (the original predicate `id != auth.uid()` was a no-op: users.id is
@@ -20,6 +23,13 @@
 -- ============================================================================
 
 -- 1. Admin policy: exclude the admin's own row entirely.
+--    Note: users_update_own (auth_id = auth.uid()) still matches a user's own
+--    row under permissive policy OR-ing, so it remains the path for self-edits
+--    (name, avatar). Privileged columns (role, is_active) are blocked for
+--    self-edits by the trigger below — that trigger is the authoritative guard.
+--    Scope: is_firm_admin() (the existing helper) has no firm_id predicate,
+--    same as the pre-existing users/cases admin policies; multi-firm isolation
+--    is not implemented in this app (no firms table exists).
 DROP POLICY IF EXISTS users_update_admin ON users;
 CREATE POLICY users_update_admin ON users
     FOR UPDATE

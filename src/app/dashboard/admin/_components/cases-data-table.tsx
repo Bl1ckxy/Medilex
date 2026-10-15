@@ -62,6 +62,17 @@ export function CasesData() {
                 throw new Error(body?.error?.message ?? `Request failed (${res.status})`);
             }
             toast.success('Analysis re-run successfully');
+            // Re-read the row: the route's status/score update can no-op silently
+            // for mismatched firm scoping, so show what is actually stored.
+            const fresh = await createSupabaseBrowserClient()
+                .from('cases')
+                .select('status')
+                .eq('id', caseId)
+                .maybeSingle<{ status: string }>();
+            const storedStatus = fresh.data?.status;
+            if (storedStatus) {
+                setCases((prev) => prev.map((c) => (c.id === caseId ? { ...c, status: storedStatus } : c)));
+            }
         } catch (e) {
             toast.error(`Failed to re-run analysis: ${e instanceof Error ? e.message : 'unknown error'}`);
         }

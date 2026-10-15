@@ -85,10 +85,15 @@ export function UsersData({ currentUserId }: { currentUserId: string }) {
         setActionLoading(user.id);
         const newRole = user.role === 'firm_admin' ? 'associate' : 'firm_admin';
         const supabase = createSupabaseBrowserClient();
-        const { error } = await (supabase.from('users') as any).update({ role: newRole }).eq('id', user.id);
+        const { data, error } = await (supabase.from('users') as any)
+            .update({ role: newRole })
+            .eq('id', user.id)
+            .select('id');
 
         if (error) {
             toast.error(`Failed to update role: ${error.message}`);
+        } else if (!Array.isArray(data) || data.length === 0) {
+            toast.error('Role was not changed — no matching row (your admin access may have been revoked).');
         } else {
             setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, role: newRole } : u)));
             toast.success(`Role updated to ${ROLE_LABELS[newRole] ?? newRole}`);
@@ -101,10 +106,15 @@ export function UsersData({ currentUserId }: { currentUserId: string }) {
         setActionLoading(user.id);
         const newActive = !user.is_active;
         const supabase = createSupabaseBrowserClient();
-        const { error } = await (supabase.from('users') as any).update({ is_active: newActive }).eq('id', user.id);
+        const { data, error } = await (supabase.from('users') as any)
+            .update({ is_active: newActive })
+            .eq('id', user.id)
+            .select('id');
 
         if (error) {
             toast.error(`Failed to update status: ${error.message}`);
+        } else if (!Array.isArray(data) || data.length === 0) {
+            toast.error('Status was not changed — no matching row (your admin access may have been revoked).');
         } else {
             setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, is_active: newActive } : u)));
             toast.success(`User ${newActive ? 'activated' : 'suspended'}`);
@@ -125,7 +135,7 @@ export function UsersData({ currentUserId }: { currentUserId: string }) {
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Team Members</h3>
                 <p className="text-xs text-slate-400">
-                    {users.length} {users.length === 1 ? 'member' : 'members'} · role changes take effect on next sign-in
+                    {users.length} {users.length === 1 ? 'member' : 'members'} · role and status changes take effect immediately
                 </p>
             </div>
 
@@ -157,7 +167,7 @@ export function UsersData({ currentUserId }: { currentUserId: string }) {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => void toggleRole(user)}
-                                        disabled={user.id === currentUserId || actionLoading === user.id}
+                                        disabled={user.id === currentUserId || actionLoading !== null}
                                         title={user.id === currentUserId ? 'You cannot change your own role' : undefined}
                                     >
                                         {actionLoading === user.id ? (
@@ -173,7 +183,7 @@ export function UsersData({ currentUserId }: { currentUserId: string }) {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => void toggleStatus(user)}
-                                        disabled={user.id === currentUserId || actionLoading === user.id}
+                                        disabled={user.id === currentUserId || actionLoading !== null}
                                         title={user.id === currentUserId ? 'You cannot suspend your own account' : undefined}
                                         className={cn(
                                             user.is_active

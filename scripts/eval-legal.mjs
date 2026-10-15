@@ -43,30 +43,52 @@ async function match(queryEmbedding, limit = 8) {
   return (data || []).slice(0, limit);
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Groq free tier is TPM-bounded (8k tokens/min): wait out the token window on
+// 429 and retry once on truncated/malformed JSON — infra robustness only,
+// mirroring src/lib/ai/json-parse.ts. No scoring, prompt or threshold changes.
 async function askLLM(question, authoritiesChunkIds) {
   const authBlock = authoritiesChunkIds.map((id, i) => `[A${i+1}] ${id}`).join('\n');
   const prompt = `You are MediLex. Answer ONLY from the AUTHORITIES below. Every proposition ends with an inline citation in [A#] form copied verbatim. Return strict JSON: {"answer":"...","citations":["..."],"confidence":0.8}\n\nAUTHORITIES:\n${authBlock}\n\nQUESTION: ${question}`;
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-    body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens: 1024 }),
-  });
-  const j = await res.json();
-  if (!res.ok || !j.choices?.[0]?.message?.content) throw new Error('LLM failed: ' + JSON.stringify(j));
-  const text = j.choices[0].message.content;
-  const cleaned = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
-  return JSON.parse(cleaned);
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+      body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: prompt }], temperature: 0.2, max_tokens: 1024 }),
+    });
+    if (res.status === 429) {
+      const reset = res.headers.get('x-ratelimit-reset-tokens');
+      const waitMs = Math.min(90000, Math.max(5000, (parseFloat(reset) || 30) * 1000 + 1000));
+      console.warn(`[EVAL] Groq rate limited — waiting ${(waitMs / 1000).toFixed(0)}s (attempt ${attempt + 1}/6)`);
+      await sleep(waitMs);
+      continue;
+    }
+    const j = await res.json();
+    if (!res.ok || !j.choices?.[0]?.message?.content) throw new Error('LLM failed: ' + JSON.stringify(j));
+    const text = j.choices[0].message.content;
+    const cleaned = text.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch (e) {
+      if (attempt >= 3) throw e;
+      console.warn(`[EVAL] Malformed JSON from Groq, retrying (attempt ${attempt + 1}/6)`);
+      await sleep(3000);
+    }
+  }
+  throw new Error('LLM failed: rate limited after 6 attempts');
 }
 
 async function main() {
   const results = [];
   let retrievalHits = 0, totalCitations = 0, verifiedCitations = 0, unverifiedCitations = 0, termHits = 0, totalTerms = 0;
   for (const q of questions) {
+    let hit = false;
     try {
       const emb = await embed(q.question);
       const chunks = await match(emb, 8);
       const citationIds = chunks.map(c => c.citation || c.id);
-      const hit = (q.expectedCitations || []).some(ec => citationIds.some(rc => (rc || '').toLowerCase().includes(ec.toLowerCase().split(',')[0])));
+      hit = (q.expectedCitations || []).some(ec => citationIds.some(rc => (rc || '').toLowerCase().includes(ec.toLowerCase().split(',')[0])));
       if (hit) retrievalHits++;
       const llm = await askLLM(q.question, citationIds);
       totalCitations += (llm.citations || []).length;
@@ -77,7 +99,7 @@ async function main() {
       for (const t of (q.expectedTerms || [])) { totalTerms++; if (answerText.includes(t.toLowerCase())) termHits++; }
       results.push({ id: q.id, kind: q.negative ? 'negative' : 'positive', hit, citations: (llm.citations || []).length, answerSnippet: String(llm.answer || '').slice(0, 120) });
     } catch (e) {
-      results.push({ id: q.id, kind: q.negative ? 'negative' : 'positive', hit: false, error: String(e), answerSnippet: '' });
+      results.push({ id: q.id, kind: q.negative ? 'negative' : 'positive', hit, error: String(e), answerSnippet: '' });
     }
   }
   const hitRate = ((retrievalHits / questions.length) * 100).toFixed(1);

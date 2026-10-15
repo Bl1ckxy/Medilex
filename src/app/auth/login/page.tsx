@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import Link from 'next/link';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -8,6 +8,10 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 export default function LoginPage() {
     const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
     const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
+    useEffect(() => {
+        const reason = new URLSearchParams(window.location.search).get('error');
+        if (reason === 'account_suspended') setError('This account has been suspended. Contact your firm administrator to regain access.');
+    }, []);
     async function submit(event: FormEvent) {
         event.preventDefault(); setBusy(true); setError('');
         const { error } = await createSupabaseBrowserClient().auth.signInWithPassword({ email, password });

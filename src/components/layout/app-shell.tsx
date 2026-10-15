@@ -20,14 +20,19 @@ export function AppShell({
     children,
     userName,
     userEmail,
+    isAdmin = false,
 }: {
     children: ReactNode;
     userName: string;
     userEmail: string;
+    isAdmin?: boolean;
 }) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const initials = userName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
+    const items = isAdmin
+        ? [...navigation, { href: '/dashboard/admin', label: 'Admin', icon: ShieldCheck }]
+        : navigation;
 
     return (
         <div className="min-h-screen bg-[#f7f8fb]">
@@ -42,7 +47,7 @@ export function AppShell({
                 <div className="px-4 pt-7">
                     <p className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-300">Workspace</p>
                     <nav className="space-y-1">
-                        {navigation.map(({ href, label, icon: Icon }) => {
+                        {items.map(({ href, label, icon: Icon }) => {
                             const active = href === '/dashboard' ? pathname === href : pathname.startsWith(href);
                             return <Link key={href} href={href} onClick={() => setMobileOpen(false)} className={cn('flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-colors', active ? 'bg-white/10 font-semibold text-white' : 'text-slate-200 hover:bg-white/5 hover:text-white')}><Icon className={cn('h-4 w-4', active && 'text-gold')} />{label}</Link>;
                         })}

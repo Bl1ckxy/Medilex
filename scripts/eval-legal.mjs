@@ -2,7 +2,8 @@
  * Evaluates legal-qa corpus against live retrieval + LLM.
  * Direct APIs only — no dev server/auth session needed.
  */
-import 'dotenv/config';
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 import fs from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { GoogleGenAI } from '@google/genai';

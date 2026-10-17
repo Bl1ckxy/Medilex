@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
     let result: StrengthResult;
     try {
-        result = StrengthResultSchema.parse(await generateJson(strengthPrompt(material, grounding)));
+        result = await generateJson(strengthPrompt(material, grounding), StrengthResultSchema);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Analysis failed';
         console.error('[ANALYSIS/STRENGTH] LLM error:', message);

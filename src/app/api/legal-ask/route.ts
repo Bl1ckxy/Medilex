@@ -48,17 +48,16 @@ export async function POST(request: NextRequest) {
     let result: LegalAskResult;
     try {
         result = await generateWithRetry(async () =>
-            LegalAskResultSchema.parse(
-                await generateJson(
-                    legalAskPrompt({
-                        question,
-                        authorities: retrieval.chunks,
-                        filters: {
-                            ...(matchType ? { matchType } : {}),
-                            ...(matchTags?.length ? { matchTags } : {}),
-                        },
-                    }),
-                ),
+            generateJson(
+                legalAskPrompt({
+                    question,
+                    authorities: retrieval.chunks,
+                    filters: {
+                        ...(matchType ? { matchType } : {}),
+                        ...(matchTags?.length ? { matchTags } : {}),
+                    },
+                }),
+                LegalAskResultSchema,
             ),
         );
     } catch (error) {

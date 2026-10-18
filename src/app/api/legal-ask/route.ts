@@ -1,6 +1,7 @@
-import type { NextRequest } from 'next/server';
+import type { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiError, apiSuccess } from '@/lib/api';
+import { checkRateLimit } from '@/lib/ratelimit';
 import { getProfile } from '@/lib/server-user';
 import { retrieveLegalChunks } from '@/lib/ai/legal-retriever';
 import { checkCitations, stripSentencesWithCitations } from '@/lib/ai/citation-checker';
@@ -22,6 +23,18 @@ export async function POST(request: NextRequest) {
     const { supabase, authUser, profile } = await getProfile();
     if (!authUser || !profile) return apiError(401, 'UNAUTHORIZED', 'Authentication required');
 
+    const rateLimit = await checkRateLimit('legal-ask', `user:${profile.id}`);
+    const withRateHeaders = <T extends NextResponse>(res: T): T => {
+        res.headers.set('X-RateLimit-Limit', String(rateLimit.limit));
+        res.headers.set('X-RateLimit-Remaining', String(rateLimit.remaining));
+        return res;
+    };
+    if (!rateLimit.ok) {
+        const res = apiError(429, 'RATE_LIMITED', 'Rate limit exceeded');
+        res.headers.set('Retry-After', String(rateLimit.resetSec));
+        return withRateHeaders(res);
+    }
+
     const body = await request.json().catch(() => null);
     const parsed = RequestSchema.safeParse(body);
     if (!parsed.success) return apiError(422, 'VALIDATION_ERROR', 'question (3-2000 chars) is required');
@@ -35,14 +48,16 @@ export async function POST(request: NextRequest) {
 
     // Designed outcome, not an error: the corpus does not cover the question.
     if (retrieval.chunks.length === 0) {
-        return apiSuccess({
-            answer: null,
-            insufficient: true,
-            citations: [],
-            citationCheck: null,
-            retrieval,
-            authorities: [],
-        });
+        return withRateHeaders(
+            apiSuccess({
+                answer: null,
+                insufficient: true,
+                citations: [],
+                citationCheck: null,
+                retrieval,
+                authorities: [],
+            }),
+        );
     }
 
     let result: LegalAskResult;
@@ -63,7 +78,7 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Analysis failed';
         console.error('[LEGAL-ASK] LLM error:', message);
-        return apiError(503, 'LLM_UNAVAILABLE', 'Legal research unavailable', { reason: message });
+        return withRateHeaders(apiError(503, 'LLM_UNAVAILABLE', 'Legal research unavailable', { reason: message }));
     }
 
     // Citation gate: verify every citation against the retrieved set only.
@@ -80,13 +95,15 @@ export async function POST(request: NextRequest) {
         citationCheck = await checkCitations(`${answer}\n${result.citations.join('\n')}`, retrieval.chunks);
     }
 
-    return apiSuccess({
-        answer: answer.trim() || null,
-        insufficient: false,
-        citations: result.citations,
-        confidence: result.confidence,
-        citationCheck,
-        retrieval,
-        authorities: retrieval.chunks,
-    });
+    return withRateHeaders(
+        apiSuccess({
+            answer: answer.trim() || null,
+            insufficient: false,
+            citations: result.citations,
+            confidence: result.confidence,
+            citationCheck,
+            retrieval,
+            authorities: retrieval.chunks,
+        }),
+    );
 }

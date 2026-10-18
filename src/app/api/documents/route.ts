@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from '@/lib/api';
 import { getProfile } from '@/lib/server-user';
 import { UploadDocumentSchema } from '@/types/api';
 import { sanitizeFileName } from '@/lib/utils';
+import { validateUpload, ValidationError } from '@/lib/validate-upload';
 import { sha256, constantTimeEqual } from '@/lib/ai/hash';
 import { ingestDocument, type IngestionResult } from '@/lib/ai/ingestion';
 import { getMockDocumentsForCase } from '@/mock';
@@ -55,12 +56,15 @@ export async function POST(request: Request) {
     if (caseError) return apiError(500, 'INTERNAL_ERROR', caseError.message);
     if (!caseData) return apiError(404, 'NOT_FOUND', 'Case not found');
 
-    if (file.size > 25 * 1024 * 1024) return apiError(413, 'FILE_TOO_LARGE', 'Files must be 25 MB or smaller');
-    if (!['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
-        return apiError(415, 'UNSUPPORTED_FORMAT', 'Only PDF, PNG, JPEG and WebP files are supported');
+    let bytes: Buffer;
+    try {
+        const validated = await validateUpload(file);
+        bytes = validated.buffer;
+    } catch (error) {
+        if (error instanceof ValidationError) return apiError(error.status, error.code, error.message);
+        console.error('[UPLOAD] Unexpected validation failure:', error instanceof Error ? error.message : error);
+        return apiError(500, 'INTERNAL_ERROR', 'Failed to validate the uploaded file');
     }
-
-    const bytes = Buffer.from(await file.arrayBuffer());
     if (!constantTimeEqual(sha256(bytes), input.data.clientHash)) {
         return apiError(422, 'HASH_MISMATCH', 'The uploaded file hash does not match clientHash');
     }

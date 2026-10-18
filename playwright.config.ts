@@ -30,6 +30,9 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
+    env: {
+      RATE_LIMIT_DISABLED: 'true',
+    },
   },
   expect: {
     toHaveScreenshot: { maxDiffPixels: 100 },

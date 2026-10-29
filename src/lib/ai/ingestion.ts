@@ -38,7 +38,7 @@ export async function ingestDocument(documentId: string, expectedHash: string): 
         const isPdf = document.mime_type === 'application/pdf';
         extractedText = isPdf ? await ocrPdf(bytes) : await ocrImages([bytes], document.mime_type);
         ocrStatus = 'completed';
-        console.log(`[INGESTION] OCR completed for document ${documentId}, ${extractedText.length} chars`);
+        if (process.env.NODE_ENV === 'development') console.log(`[INGESTION] OCR completed for document ${documentId}, ${extractedText.length} chars`);
     } catch (cause) {
         ocrError = cause instanceof Error ? cause.message : 'OCR failed';
         console.error(`[INGESTION] OCR failed for document ${documentId}:`, ocrError);
@@ -76,7 +76,7 @@ export async function ingestDocument(documentId: string, expectedHash: string): 
             }
             chunkCount = rows.length;
             embeddingStatus = 'completed';
-            console.log(`[INGESTION] Embeddings completed for document ${documentId}, ${chunkCount} chunks`);
+            if (process.env.NODE_ENV === 'development') console.log(`[INGESTION] Embeddings completed for document ${documentId}, ${chunkCount} chunks`);
         } catch (cause) {
             const embedError = cause instanceof Error ? cause.message : 'Embedding failed';
             console.error(`[INGESTION] Embeddings failed for document ${documentId}:`, embedError);

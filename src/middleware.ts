@@ -1,3 +1,4 @@
+// Rate limiting deferred to shared-store (Upstash/Vercel KV) - TODO
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { env } from '@/env';

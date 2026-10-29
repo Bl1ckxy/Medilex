@@ -50,6 +50,7 @@ next-env.d.ts
 *.swo
 .vercel
 .env*
+!.env.example
 
 # local notes / tooling (not for the repo)
 Context.md
@@ -60,3 +61,4 @@ opencode.json
 # playwright artifacts
 test-results/
 playwright-report/
+.playwright-cli/

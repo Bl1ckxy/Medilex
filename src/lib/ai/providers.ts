@@ -91,7 +91,7 @@ export async function generateGeminiContent(
         try {
             const response = await gemini.models.generateContent({ ...params, model });
             onModelSucceeded?.(model);
-            console.log(`[GEMINI] Model succeeded: ${model}`);
+            if (process.env.NODE_ENV === 'development') console.log(`[GEMINI] Model succeeded: ${model}`);
             return response;
         } catch (error) {
             lastError = error;
@@ -137,7 +137,7 @@ export async function groqChatWithModel(
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0,
             });
-            console.log(`[GROQ] Model succeeded: ${model}`);
+            if (process.env.NODE_ENV === 'development') console.log(`[GROQ] Model succeeded: ${model}`);
             return { text: response.choices[0]?.message.content ?? '', model };
         } catch (error) {
             lastError = error;

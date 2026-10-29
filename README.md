@@ -249,6 +249,29 @@ medilex/
 
 ---
 
+## 🔌 API
+
+All endpoints require an authenticated session (middleware returns `401` for API calls without one); `/api/health` is public.
+
+| Route | Purpose |
+|---|---|
+| `/api/cases` | List and create cases |
+| `/api/cases/[id]` | Case detail, update, delete |
+| `/api/documents` | List and upload evidence (multipart) |
+| `/api/documents/[documentId]` | Document detail and delete |
+| `/api/documents/[documentId]/process` | Async OCR + embedding ingestion |
+| `/api/documents/[documentId]/reprocess` | Re-run ingestion for a document |
+| `/api/analysis/strength` | AI case-strength assessment (RAG-grounded) |
+| `/api/analysis/compensation` | AI compensation range estimate |
+| `/api/lawyer-review` | Structured counsel review |
+| `/api/verification` | Claim verification pass |
+| `/api/legal-ask` | Grounded legal Q&A over the curated corpus |
+| `/api/legal-search` | Retrieval-only corpus search (no AI) |
+| `/api/settings` | Profile display-name update |
+| `/api/health` | Liveness probe (public) |
+
+---
+
 ## 🌐 Deployment
 
 ### Vercel (Recommended)
@@ -291,4 +314,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 <p align="center">
   Made with ❤️ for Indian legal professionals by HARSH ROKADE (https://github.com/Bl1ckxy)
-</p>`r`n## ? Legal Corpus & Grounded QA`r`n- Curated 62-authority Indian medical-negligence corpus (`data/legal/`), embedded with `gemini-embedding-001` (768d), retrieved via HNSW (`supabase/legal_corpus.sql`), verified by deterministic citation gate (`src/lib/ai/citation-checker.ts`).`r`n- `/dashboard/legal` � ask or search the corpus; answers are gated � unverified citations are stripped before persistence. See `docs/legal-corpus-card.md`, `docs/legal-qa-eval.md`, `docs/PANEL-ONEPAGER.md`.`r`n- `npm run test:unit` covers retrieval + gate; `npm run eval:legal` (script `scripts/eval-legal.mjs`) runs 18 questions with 3 negative controls against live APIs.`r`n
+</p>`r`n## ? Legal Corpus & Grounded QA`r`n- Curated 62-authority Indian medical-negligence corpus (`data/legal/`), embedded with `gemini-embedding-001` (768d), retrieved via HNSW (`supabase/legal_corpus.sql`), verified by deterministic citation gate (`src/lib/ai/citation-checker.ts`).`r`n- `/dashboard/legal` � ask or search the corpus; answers are gated � unverified citations are stripped before persistence. See `docs/legal-corpus-card.md`, `docs/legal-qa-eval.md`, `docs/PANEL-ONEPAGER.md`.`r`n- `npm run test:unit` covers retrieval + gate; `npm run eval:legal` (script `scripts/eval-legal.mjs`) runs 18 questions with 3 negative controls against live APIs.`r`n

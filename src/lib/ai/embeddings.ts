@@ -22,7 +22,7 @@ export async function embedText(text: string, opts?: { taskType?: 'RETRIEVAL_DOC
                     `Gemini returned an embedding of unexpected dimensionality: ${values.length}`
                 );
             }
-            console.log(`[EMBEDDING] Model succeeded: ${model} (${values.length} dims)`);
+            if (process.env.NODE_ENV === 'development') console.log(`[EMBEDDING] Model succeeded: ${model} (${values.length} dims)`);
             return values;
         } catch (error) {
             lastError = error;

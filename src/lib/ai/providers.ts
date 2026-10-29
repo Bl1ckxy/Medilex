@@ -83,12 +83,14 @@ function isGroqRetryableError(error: unknown): boolean {
 export async function generateGeminiContent(
     params: Omit<GenerateContentParameters, 'model'>,
     models: readonly string[] = GEMINI_MODELS,
+    onModelSucceeded?: (model: string) => void,
 ) {
     let lastError: unknown;
     const cleanModels = [...new Set(models.map(cleanGeminiModelName))];
     for (const model of cleanModels) {
         try {
             const response = await gemini.models.generateContent({ ...params, model });
+            onModelSucceeded?.(model);
             console.log(`[GEMINI] Model succeeded: ${model}`);
             return response;
         } catch (error) {
@@ -119,8 +121,16 @@ export async function groqChat(
     prompt: string,
     models: readonly string[] = GROQ_MODELS,
 ): Promise<string> {
+    const result = await groqChatWithModel(prompt, models);
+    return result.text;
+}
+
+export async function groqChatWithModel(
+    prompt: string,
+    models: readonly string[] = GROQ_MODELS,
+): Promise<{ text: string; model: string }> {
     let lastError: unknown;
-    for (const model of models) {
+    for (const model of models.filter((candidate): candidate is string => Boolean(candidate?.trim()))) {
         try {
             const response = await groq.chat.completions.create({
                 model,
@@ -128,7 +138,7 @@ export async function groqChat(
                 temperature: 0,
             });
             console.log(`[GROQ] Model succeeded: ${model}`);
-            return response.choices[0]?.message.content ?? '';
+            return { text: response.choices[0]?.message.content ?? '', model };
         } catch (error) {
             lastError = error;
             if (isGroqRetryableError(error)) {
@@ -143,9 +153,18 @@ export async function groqChat(
 }
 
 export async function geminiText(prompt: string, model = 'gemini-3.6-flash') {
+    const result = await geminiTextWithModel(prompt, model);
+    return result.text;
+}
+
+export async function geminiTextWithModel(prompt: string, model = 'gemini-3.6-flash') {
     const models = [model, ...GEMINI_MODELS.filter((candidate) => candidate !== model)];
-    const response = await generateGeminiContent({ contents: prompt }, models);
-    return response.text ?? '';
+    const cleanedModels = models.map(cleanGeminiModelName).filter(Boolean);
+    let usedModel = '';
+    const response = await generateGeminiContent({ contents: prompt }, cleanedModels, (succeededModel) => {
+        usedModel = succeededModel;
+    });
+    return { text: response.text ?? '', model: usedModel || cleanedModels[0] || model };
 }
 
 export async function cohereRerank(query: string, documents: string[], topN = documents.length) {

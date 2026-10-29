@@ -1,6 +1,5 @@
 export * from './limitation';
 export * from './forum';
-export * from './scoring';
 export * from './compensation';
 export * from './day4';
 export function formatCaseNumber(year = new Date().getFullYear(), sequence = 1): string {

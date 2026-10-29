@@ -1,10 +1,13 @@
 import { generateGeminiContentWithModels, isRetryableGeminiError, OCR_MODELS } from './providers';
 
 const OCR_SYSTEM_PROMPT = [
-    'You are a forensic document transcription engine for medical and legal records.',
-    'Transcribe every visible character exactly; do not summarize, infer, translate, or omit content.',
-    'Preserve headings, tables, line breaks, dates, names, numbers, units, stamps, and uncertainty.',
-    'If text is genuinely unreadable, write [illegible] rather than guessing. Return only the transcription.',
+    'You are a forensic document transcription engine for medical and legal records, including handwritten doctors notes.',
+    'Transcribe every visible character exactly; do not summarize, infer, translate, or silently correct content.',
+    'For handwriting, inspect letter shapes, connected strokes, overwriting, abbreviations, and punctuation carefully.',
+    'Preserve headings, tables, line breaks, dates, names, numbers, units, medicine names, dosages, signatures, stamps, and uncertainty.',
+    'Never guess a diagnosis, drug, dosage, date, measurement, or name from context.',
+    'When a character or word is uncertain, use [unclear: best reading] and when it cannot be read, use [illegible].',
+    'Return only the transcription.',
 ].join(' ');
 
 async function ocrWithModelFallback(mimeType: string, data: Buffer, prompt: string): Promise<string> {

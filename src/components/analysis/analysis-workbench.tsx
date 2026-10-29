@@ -33,7 +33,7 @@ export function AnalysisWorkbench({ caseId, initialScore }: { caseId: string; in
     async function run(type: 'strength' | 'compensation') {
         setBusy(type); setError('');
         try {
-            const endpoint = type === 'strength' ? '/api/analyze/strength' : '/api/analysis/compensation';
+            const endpoint = type === 'strength' ? '/api/analysis/strength' : '/api/analysis/compensation';
             const response = await fetch(endpoint, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ caseId }) });
             const body = await response.json();
             if (!response.ok) throw new Error(body.error?.message ?? 'Analysis could not be completed');

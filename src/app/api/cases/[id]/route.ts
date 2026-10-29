@@ -2,48 +2,20 @@ import type { NextRequest } from 'next/server';
 import { UpdateCaseSchema } from '@/types/api';
 import { apiError, apiSuccess } from '@/lib/api';
 import { getProfile } from '@/lib/server-user';
-import { getMockCase } from '@/mock';
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
     const { supabase, authUser, profile } = await getProfile();
     if (!authUser || !profile) return apiError(401, 'UNAUTHORIZED', 'Authentication required');
     const { data, error } = await (supabase as any).from('cases').select('*, documents(*)').eq('id', params.id).eq('firm_id', profile.firm_id ?? profile.id).single();
-    if (error || !data) {
-        const mockData = getMockCase(params.id);
-        if (!mockData) return apiError(404, 'NOT_FOUND', 'Case not found');
-        const formattedMock: any = {
-            id: mockData.id,
-            case_number: mockData.case_number,
-            patient_name: mockData.patient_name,
-            patientAge: mockData.patientAge,
-            patientGender: mockData.patientGender,
-            hospitalName: mockData.hospitalName,
-            hospitalType: mockData.hospitalType,
-            hospitalCity: mockData.hospitalCity,
-            hospitalState: mockData.hospitalState,
-            negligenceType: mockData.negligenceType,
-            severity: mockData.severity,
-            incidentDate: mockData.incidentDate,
-            incidentDescription: mockData.incidentDescription,
-            claimAmount: mockData.claimAmount,
-            nextOfKin: mockData.nextOfKin,
-            nextOfKinRelation: mockData.nextOfKinRelation,
-            treatingDoctorName: mockData.treatingDoctorName,
-            treatingDoctorRegistration: mockData.treatingDoctorRegistration,
-            status: mockData.status,
-            assignedTo: mockData.assignedTo,
-            filedForum: mockData.filedForum,
-            complaintNumber: mockData.complaintNumber,
-            createdAt: mockData.createdAt,
-            firmId: mockData.firmId,
-            createdBy: mockData.createdBy,
-            limitationDeadline: mockData.limitation_deadline,
-            aiStrengthScore: mockData.aiStrengthScore,
-            aiAnalysisCompleted: mockData.aiAnalysisCompleted,
-            documents: [],
-        };
-        return apiSuccess(formattedMock);
+    if (error) {
+        console.error('[API/CASES][GET] Database query failed', {
+            caseId: params.id,
+            firmId: profile.firm_id ?? profile.id,
+            error: error.message,
+        });
+        return apiError(500, 'INTERNAL_ERROR', 'Database query failed');
     }
+    if (!data) return apiError(404, 'NOT_FOUND', 'Case not found');
     return apiSuccess(data);
 }
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {

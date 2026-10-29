@@ -5,6 +5,7 @@ import { getCaseMaterial } from '@/lib/legal/day4-case';
 import { lawyerReviewPrompt } from '@/lib/ai/prompts/day4';
 import { generateJson } from '@/lib/ai/json';
 import { LawyerReviewRequestSchema } from '@/lib/legal/day4';
+import { buildEvidenceGrounding } from '@/lib/ai/grounding';
 
 export async function POST(request: NextRequest) {
     const { supabase, authUser, profile } = await getProfile();
@@ -13,8 +14,9 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) return apiError(422, 'VALIDATION_ERROR', 'Invalid lawyer review request', parsed.error.flatten());
     const material = await getCaseMaterial(supabase, parsed.data.caseId, profile.firm_id ?? profile.id);
     if (!material) return apiError(404, 'NOT_FOUND', 'Case not found');
+    const evidence = await buildEvidenceGrounding(supabase, material, profile.firm_id ?? profile.id);
     try {
-        const result = await generateJson(lawyerReviewPrompt({ case: material, focus: parsed.data.focus }));
+        const result = await generateJson(lawyerReviewPrompt({ case: { ...material, documents: undefined, evidence }, focus: parsed.data.focus }));
         return apiSuccess(result);
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Lawyer review failed';

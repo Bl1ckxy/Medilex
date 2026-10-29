@@ -3,14 +3,13 @@ import { apiError, apiSuccess } from '@/lib/api';
 import { getProfile } from '@/lib/server-user';
 import { getCaseMaterial } from '@/lib/legal/day4-case';
 import { strengthPrompt } from '@/lib/ai/prompts/day4';
-import { buildLegalGrounding } from '@/lib/ai/grounding';
+import { buildLegalGrounding, buildEvidenceGrounding } from '@/lib/ai/grounding';
 import { checkCitations } from '@/lib/ai/citation-checker';
 import { computeLimitation } from '@/lib/legal/limitation';
 import { computeForum } from '@/lib/legal/forum';
 import { calculateCompensation } from '@/lib/legal/compensation';
-import { generateJson } from '@/lib/ai/json';
+import { generateJsonWithMetadata } from '@/lib/ai/json';
 import { StrengthResultSchema, type StrengthResult } from '@/lib/legal/day4';
-import { env } from '@/env';
 import type { SeverityLevel } from '@/types/legal';
 
 export async function POST(request: NextRequest) {
@@ -23,10 +22,19 @@ export async function POST(request: NextRequest) {
     if (!material) return apiError(404, 'NOT_FOUND', 'Case not found');
 
     const grounding = await buildLegalGrounding(supabase, material);
+    const evidence = await buildEvidenceGrounding(supabase, material, profile.firm_id ?? profile.id);
+    const promptMaterial = { ...material, documents: undefined, evidence };
 
     let result: StrengthResult;
     try {
-        result = await generateJson(strengthPrompt(material, grounding), StrengthResultSchema);
+        const generated = await generateJsonWithMetadata(strengthPrompt(promptMaterial, grounding), StrengthResultSchema);
+        result = generated.result;
+        const { error: analysisError } = await (supabase as any).from('ai_analyses').insert({
+            case_id: caseId, analysis_type: 'case_strength', model_used: generated.model,
+            result: { ...result, _ai_metadata: { provider: generated.provider, fallbackUsed: generated.fallbackUsed } },
+            confidence: result.confidence * 100, created_by: profile.id,
+        });
+        if (analysisError) return apiError(500, 'INTERNAL_ERROR', 'Failed to save analysis');
     } catch (error) {
         const message = error instanceof Error ? error.message : 'Analysis failed';
         console.error('[ANALYSIS/STRENGTH] LLM error:', message);
@@ -75,11 +83,6 @@ export async function POST(request: NextRequest) {
           }
         : null;
 
-    const { error: analysisError } = await (supabase as any).from('ai_analyses').insert({
-        case_id: caseId, analysis_type: 'case_strength', model_used: env.GROQ_MODEL ?? 'openai/gpt-oss-20b',
-        result, confidence: result.confidence * 100, created_by: profile.id,
-    });
-    if (analysisError) return apiError(500, 'INTERNAL_ERROR', analysisError.message);
     const { error: caseError } = await (supabase as any).from('cases').update({ ai_strength_score: result.score, status: 'analysis' }).eq('id', caseId).eq('firm_id', profile.firm_id ?? profile.id);
     if (caseError) return apiError(500, 'INTERNAL_ERROR', caseError.message);
     return apiSuccess({ ...result, engine, grounding, citationCheck, deviation });

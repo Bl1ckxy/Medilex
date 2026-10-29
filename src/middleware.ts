@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { env } from '@/env';
 import type { Database } from '@/types/supabase';
-import { rateLimit } from '../middleware/rate-limit';
 
 type CookieToSet = { name: string; value: string; options?: Parameters<NextResponse['cookies']['set']>[2] };
 
@@ -13,9 +12,6 @@ function isAdminPath(pathname: string) {
 }
 
 export async function middleware(request: NextRequest) {
-  const rateLimitResponse = rateLimit(request);
-  if (rateLimitResponse) return rateLimitResponse;
-
   if (request.nextUrl.pathname === '/api/health') return NextResponse.next();
 
   let response = NextResponse.next({ request });

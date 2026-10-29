@@ -62,6 +62,9 @@ export function EvidenceVault({
             if (!response.ok) throw new Error(body.error?.message ?? 'Unable to upload document');
             setSelectedFile(null);
             if (fileInput.current) fileInput.current.value = '';
+            if (!body.data?.duplicate && body.data?.document?.id) {
+                void fetch(`/api/documents/${body.data.document.id}/process`, { method: 'POST' });
+            }
             setMessage(body.data?.duplicate ? 'This file is already attached to this case.' : 'Evidence uploaded. OCR processing will appear here when ready.');
             onChanged();
         } catch (cause) {
@@ -136,9 +139,9 @@ export function EvidenceVault({
 
     return (
         <div className="space-y-6">
-            <Panel title="Add evidence" description="Upload medical records, correspondence and expert material. Files are encrypted in storage and hashed before ingestion.">
+            <Panel title="Add evidence" description="Upload medical records, handwritten doctors notes, correspondence and expert material. Files are encrypted in storage and hashed before ingestion.">
                 <div className="grid gap-4 p-5 lg:grid-cols-[1fr_220px_auto] lg:items-end">
-                    <div><label className="mb-1.5 block text-sm font-medium text-navy" htmlFor="evidence-file">Select a file</label><button type="button" onClick={() => fileInput.current?.click()} className="flex h-11 w-full items-center gap-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 text-left text-sm transition hover:border-gold hover:bg-gold-50/30"><UploadCloud className="h-4 w-4 shrink-0 text-gold-600" /><span className="truncate text-slate-600">{selectedFile ? selectedFile.name : 'PDF, PNG, JPEG or WebP up to 25 MB'}</span></button><input ref={fileInput} id="evidence-file" type="file" accept=".pdf,image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} /></div>
+                    <div><label className="mb-1.5 block text-sm font-medium text-navy" htmlFor="evidence-file">Select a file</label><button type="button" onClick={() => fileInput.current?.click()} className="flex h-11 w-full items-center gap-3 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 text-left text-sm transition hover:border-gold hover:bg-gold-50/30"><UploadCloud className="h-4 w-4 shrink-0 text-gold-600" /><span className="truncate text-slate-600">{selectedFile ? selectedFile.name : 'PDF, PNG, JPEG or WebP up to 10 MB'}</span></button><input ref={fileInput} id="evidence-file" type="file" accept=".pdf,image/png,image/jpeg,image/webp" className="sr-only" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} /></div>
                     <label className="block text-sm font-medium text-navy">Category<select value={category} onChange={(event) => setCategory(event.target.value as DocumentCategory)} className="mt-1.5 h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm font-normal text-slate-700 outline-none focus:border-gold focus:ring-2 focus:ring-gold/20">{DOCUMENT_CATEGORIES.map((item) => <option key={item} value={item}>{DOCUMENT_CATEGORY_LABELS[item]}</option>)}</select></label>
                     <Button onClick={() => void upload()} disabled={!selectedFile} loading={busy} className="w-full lg:w-auto"><Plus className="h-4 w-4" />Upload evidence</Button>
                 </div>
@@ -147,7 +150,7 @@ export function EvidenceVault({
                         <div className="flex items-center gap-3">
                             <Loader2 className="h-4 w-4 animate-spin text-gold-600" />
                             <p className="text-sm font-medium text-navy">
-                                Ingesting document & performing OCR…
+                                Ingesting document & reading text, including handwriting…
                             </p>
                         </div>
                         <p className="text-xs text-slate-500">

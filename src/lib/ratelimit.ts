@@ -1,5 +1,6 @@
 // src/lib/ratelimit.ts
-// Dual-driver rate limiter: Upstash REST (if env vars present) or In-Memory fallback.
+// Dual-driver rate limiter: Upstash REST (if env vars are present) or a
+// route-level in-memory fallback. Middleware does not use this fallback.
 
 export interface RateLimitResult {
     ok: boolean;
@@ -11,39 +12,6 @@ export interface RateLimitResult {
 interface Driver {
     limit(key: string, max: number, windowSec: number): Promise<RateLimitResult>;
 }
-
-// --- In-Memory Driver (Fallback) ---
-const memoryStore = new Map<string, { count: number; resetAt: number }>();
-
-// Prevent memory leaks by clearing expired keys every 60s
-const cleanupInterval = setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of memoryStore) {
-        if (v.resetAt <= now) memoryStore.delete(k);
-    }
-}, 60000);
-if (typeof cleanupInterval.unref === 'function') cleanupInterval.unref();
-
-const memoryDriver: Driver = {
-    async limit(key, max, windowSec) {
-        const now = Date.now();
-        const record = memoryStore.get(key);
-
-        if (!record || record.resetAt <= now) {
-            memoryStore.set(key, { count: 1, resetAt: now + windowSec * 1000 });
-            return { ok: true, limit: max, remaining: max - 1, resetSec: windowSec };
-        }
-
-        record.count++;
-        const resetSec = Math.ceil((record.resetAt - now) / 1000);
-        return {
-            ok: record.count <= max,
-            limit: max,
-            remaining: Math.max(0, max - record.count),
-            resetSec,
-        };
-    },
-};
 
 // --- Upstash REST Driver (Production) ---
 // Two deviations from the original sketch, both required for correct Redis
@@ -99,8 +67,6 @@ const upstashDriver: Driver | null =
           }
         : null;
 
-const driver: Driver = upstashDriver || memoryDriver;
-
 // --- Tiers & Public API ---
 export const TIERS = {
     'legal-ask': { max: 10, windowSec: 60 },
@@ -113,5 +79,24 @@ export type Tier = keyof typeof TIERS;
 
 export async function checkRateLimit(tier: Tier, key: string): Promise<RateLimitResult> {
     const config = TIERS[tier];
-    return driver.limit(key, config.max, config.windowSec);
+    return (upstashDriver ?? memoryDriver).limit(key, config.max, config.windowSec);
 }
+const memoryStore = new Map<string, { count: number; resetAt: number }>();
+
+const memoryDriver: Driver = {
+    async limit(key, max, windowSec) {
+        const now = Date.now();
+        const record = memoryStore.get(key);
+        if (!record || record.resetAt <= now) {
+            memoryStore.set(key, { count: 1, resetAt: now + windowSec * 1000 });
+            return { ok: true, limit: max, remaining: max - 1, resetSec: windowSec };
+        }
+        record.count += 1;
+        return {
+            ok: record.count <= max,
+            limit: max,
+            remaining: Math.max(0, max - record.count),
+            resetSec: Math.ceil((record.resetAt - now) / 1000),
+        };
+    },
+};

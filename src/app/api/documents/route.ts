@@ -4,10 +4,6 @@ import { UploadDocumentSchema } from '@/types/api';
 import { sanitizeFileName } from '@/lib/utils';
 import { validateUpload, ValidationError } from '@/lib/validate-upload';
 import { sha256, constantTimeEqual } from '@/lib/ai/hash';
-import { ingestDocument, type IngestionResult } from '@/lib/ai/ingestion';
-import { getMockDocumentsForCase } from '@/mock';
-
-export const maxDuration = 60;
 
 export async function GET(request: Request) {
     const { supabase, authUser, profile } = await getProfile();
@@ -16,15 +12,15 @@ export async function GET(request: Request) {
     if (!caseId) return apiError(400, 'VALIDATION_ERROR', 'caseId is required');
     const firmId = profile.firm_id ?? profile.id;
     const { data: caseData, error: caseError } = await (supabase as any).from('cases').select('id').eq('id', caseId).eq('firm_id', firmId).maybeSingle();
-    if (caseError) return apiError(500, 'INTERNAL_ERROR', caseError.message);
+    if (caseError) {
+        console.error('[API/DOCUMENTS][GET] Case lookup failed', { caseId, firmId, error: caseError.message });
+        return apiError(500, 'INTERNAL_ERROR', 'Database query failed');
+    }
+    if (!caseData) return apiError(404, 'NOT_FOUND', 'Case not found');
     const { data, error } = await (supabase as any).from('documents').select('*').eq('case_id', caseId).order('created_at', { ascending: false });
     if (error) {
-        const mockDocs = getMockDocumentsForCase(caseId);
-        return apiSuccess(mockDocs);
-    }
-    if (!data || data.length === 0) {
-        const mockDocs = getMockDocumentsForCase(caseId);
-        if (mockDocs.length) return apiSuccess(mockDocs);
+        console.error('[API/DOCUMENTS][GET] Database query failed', { caseId, firmId, error: error.message });
+        return apiError(500, 'INTERNAL_ERROR', 'Database query failed');
     }
     return apiSuccess(data ?? []);
 }
@@ -87,7 +83,7 @@ export async function POST(request: Request) {
 
     const { data, error } = await (supabase as any).from('documents').insert({
         case_id: input.data.caseId,
-        file_name: file.name,
+        file_name: safeName,
         storage_path: path,
         mime_type: file.type,
         file_size: file.size,
@@ -114,47 +110,5 @@ export async function POST(request: Request) {
         return apiError(500, 'INTERNAL_ERROR', error.message);
     }
 
-    // Run ingestion - NEVER throw AI errors, always return success if file+DB saved
-    let ingestion: IngestionResult;
-    try {
-        ingestion = await ingestDocument(data.id, input.data.clientHash);
-    } catch (cause) {
-        // This should only happen for hash mismatch or document not found
-        const message = cause instanceof Error ? cause.message : 'Document ingestion failed';
-        const isTimeout = cause instanceof Error && (
-            cause.name === 'AbortError' ||
-            cause.name === 'TimeoutError' ||
-            cause.message.toLowerCase().includes('timeout') ||
-            cause.message.toLowerCase().includes('timed out') ||
-            cause.message.toLowerCase().includes('aborted')
-        );
-        if (isTimeout) {
-            return apiError(
-                504,
-                'OCR_FAILED',
-                'Document processing timed out. The file was uploaded successfully — retry processing from the Evidence tab.',
-                { retryable: true },
-            );
-        }
-        console.error('[UPLOAD] Ingestion threw unexpectedly:', message);
-        ingestion = {
-            documentId: data.id,
-            pageCount: 1,
-            chunkCount: 0,
-            ocrStatus: 'failed',
-            embeddingStatus: 'failed',
-            ocrError: message,
-        };
-    }
-
-    // Always return success if file and document row were saved
-    const message = ingestion.ocrStatus === 'failed' || ingestion.embeddingStatus === 'failed'
-        ? 'Document saved. AI processing completed with errors (check status).'
-        : 'Document saved and AI processing completed.';
-
-    return apiSuccess({
-        document: data,
-        ingestion,
-        message,
-    }, 201);
+    return apiSuccess({ document: data, message: 'Document saved. Processing will run separately.' }, 201);
 }

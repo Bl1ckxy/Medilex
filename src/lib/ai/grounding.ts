@@ -17,6 +17,19 @@ export function buildGroundingQuery(material: Record<string, unknown>): string {
   return buildGroundingQueryImpl(raw);
 }
 
+export async function buildEvidenceGrounding(
+    supabase: any,
+    material: Record<string, unknown>,
+    firmId: string,
+    limit = 12,
+): Promise<{ chunks: Array<{ id: string; content: string; score: number; metadata?: unknown }>; query: string; firmId: string }> {
+    const query = buildGroundingQuery(material);
+    if (!query) return { chunks: [], query: '', firmId };
+    const { retrieveChunks } = await import('./retriever');
+    const chunks = await retrieveChunks(supabase, query, String(material.id), limit);
+    return { chunks, query, firmId };
+}
+
 export async function buildLegalGrounding(
     supabase: any,
     material: Record<string, unknown>,

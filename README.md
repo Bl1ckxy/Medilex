@@ -32,10 +32,10 @@
 **MediLex** streamlines the entire lifecycle of medical negligence cases for Indian law firms. It leverages multiple AI models to analyze case strength, estimate compensation, draft legal documents, and search precedents — all powered by a secure Supabase backend with pgvector semantic search.
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/your-username/medilex?style=social" alt="Stars" />
-  <img src="https://img.shields.io/github/forks/your-username/medilex?style=social" alt="Forks" />
-  <img src="https://img.shields.io/github/issues/your-username/medilex" alt="Issues" />
-  <img src="https://img.shields.io/github/license/your-username/medilex" alt="License" />
+  <img src="https://img.shields.io/github/stars/Bl1ckxy/Medilex?style=social" alt="Stars" />
+  <img src="https://img.shields.io/github/forks/Bl1ckxy/Medilex?style=social" alt="Forks" />
+  <img src="https://img.shields.io/github/issues/Bl1ckxy/Medilex" alt="Issues" />
+  <img src="https://img.shields.io/github/license/Bl1ckxy/Medilex" alt="License" />
 </p>
 
 ---
@@ -107,7 +107,7 @@
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/medilex.git
+git clone https://github.com/Bl1ckxy/Medilex.git
 cd medilex
 npm install
 ```
@@ -130,11 +130,10 @@ npm run db:push
 npm run db:studio
 ```
 
-### 4. Run migrations & seed (optional)
+### 4. Seed the legal corpus (optional — required for Legal research)
 
 ```bash
-npx drizzle-kit generate
-npx drizzle-kit push
+npm run seed:legal
 ```
 
 ### 5. Start the dev server
@@ -155,6 +154,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 SUPABASE_DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres
+# Optional: fallback when SUPABASE_DATABASE_URL is unset
+DATABASE_URL=
 
 # AI Providers
 GROQ_API_KEY=gsk_your-groq-api-key
@@ -166,6 +167,10 @@ COHERE_API_KEY=your-cohere-api-key
 # Application
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 NODE_ENV=development
+
+# Optional: Upstash rate-limit driver (in-memory fallback when unset)
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 ```
 
 ---
@@ -274,9 +279,11 @@ All endpoints require an authenticated session (middleware returns `401` for API
 
 ## 🌐 Deployment
 
+**Live demo:** [https://medilex-eight.vercel.app](https://medilex-eight.vercel.app)
+
 ### Vercel (Recommended)
 
-[![Deploy with Vercel](https://vercel.com/button.svg)](https://vercel.com/new/clone?repository-url=https://github.com/your-username/medilex)
+[![Deploy with Vercel](https://vercel.com/button.svg)](https://vercel.com/new/clone?repository-url=https://github.com/Bl1ckxy/Medilex)
 
 1. Fork this repo
 2. Connect to [Vercel](https://vercel.com/new)
@@ -289,6 +296,14 @@ All endpoints require an authenticated session (middleware returns `401` for API
 npm run build
 npm run start
 ```
+
+---
+
+## ⚖️ Legal Corpus & Grounded QA
+
+- Curated **60-authority** Indian medical-negligence corpus (`data/legal/corpus.jsonl`), embedded with `gemini-embedding-001` (768d), retrieved via HNSW (`supabase/legal_corpus.sql`), and verified by a deterministic citation gate (`src/lib/ai/citation-checker.ts`).
+- `/dashboard/legal` — ask or search the corpus. Answers are gated: citations that fail verification are stripped before persistence. See `docs/legal-corpus-card.md`, `docs/legal-qa-eval.md`, `docs/PANEL-ONEPAGER.md`.
+- `npm run test:unit` covers retrieval + the gate. `npm run eval:legal` (`scripts/eval-legal.mjs`) runs the suite against live APIs — last recorded run: **21 questions, 33.3% retrieval hit rate, ~100% citation precision** (`docs/legal-qa-eval.md`).
 
 ---
 
@@ -314,4 +329,4 @@ This project is licensed under the [MIT License](LICENSE).
 
 <p align="center">
   Made with ❤️ for Indian legal professionals by HARSH ROKADE (https://github.com/Bl1ckxy)
-</p>`r`n## ? Legal Corpus & Grounded QA`r`n- Curated 62-authority Indian medical-negligence corpus (`data/legal/`), embedded with `gemini-embedding-001` (768d), retrieved via HNSW (`supabase/legal_corpus.sql`), verified by deterministic citation gate (`src/lib/ai/citation-checker.ts`).`r`n- `/dashboard/legal` � ask or search the corpus; answers are gated � unverified citations are stripped before persistence. See `docs/legal-corpus-card.md`, `docs/legal-qa-eval.md`, `docs/PANEL-ONEPAGER.md`.`r`n- `npm run test:unit` covers retrieval + gate; `npm run eval:legal` (script `scripts/eval-legal.mjs`) runs 18 questions with 3 negative controls against live APIs.`r`n
+</p>
